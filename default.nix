@@ -36,6 +36,9 @@ pkgs.stdenv.mkDerivation {
       cp -r ${pkgs.coreutils}/bin/* $out/bin/ || true
     fi
 
+    # Create cc and cc++ symlinks in the same directory
+    (cd $out/bin && ln -sf clang cc && ln -sf clang++ cc++)
+
     # Copy LLVM libraries
     echo "Copying LLVM libraries..."
     if [ -d "${llvmToolchain}/lib" ]; then
