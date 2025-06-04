@@ -9,6 +9,70 @@ The `bazel_sysroot_llvm_amd64` sysroot is responsible for providing AMD64-specif
 - `bazel_sysroot_library` - Provides common headers and system libraries
 - `bazel_sysroot_lib_amd64` - Provides AMD64-specific shared libraries
 
+## Required Tools
+
+This sysroot must provide all tools required by both `rules_cc` and `toolchain_llvm`:
+
+### Core Tools (from rules_cc)
+- `ar` (aliased from `llvm-ar`)
+- `ld` (aliased from `ld.lld`)
+- `llvm-cov`
+- `llvm-profdata`
+- `cpp` (aliased from `clang-cpp`)
+- `gcc` (aliased from `clang`)
+- `dwp` (aliased from `llvm-dwp`)
+- `gcov`
+- `nm` (aliased from `llvm-nm`)
+- `objcopy` (aliased from `llvm-objcopy`)
+- `objdump` (aliased from `llvm-objdump`)
+- `strip` (aliased from `llvm-strip`)
+- `c++filt` (aliased from `llvm-c++filt`)
+
+### Additional Tools (from toolchain_llvm)
+- `clang-cpp`
+- `clang-format` (required since toolchain_llvm 1.4.0)
+- `clang-tidy` (required since toolchain_llvm 1.4.0)
+- `clangd` (required since toolchain_llvm 1.4.0)
+- `ld.lld`
+- `llvm-ar`
+- `llvm-dwp`
+- `llvm-profdata`
+- `llvm-cov`
+- `llvm-nm`
+- `llvm-objcopy`
+- `llvm-objdump`
+- `llvm-strip`
+
+## Tool Aliasing Strategy
+
+This sysroot implements a dual aliasing strategy to ensure compatibility with both Bazel's expectations and direct tool usage:
+
+1. **Filesystem-level aliases**: During the build process, GNU tool symlinks are created in the `bin/` directory:
+   ```bash
+   ln -sf clang gcc
+   ln -sf clang-cpp cpp
+   ln -sf llvm-ar ar
+   ln -sf ld.lld ld
+   ln -sf llvm-nm nm
+   ln -sf llvm-objcopy objcopy
+   ln -sf llvm-objdump objdump
+   ln -sf llvm-strip strip
+   ln -sf llvm-dwp dwp
+   ln -sf llvm-c++filt c++filt
+   ```
+
+2. **Bazel-level aliases**: The `BUILD.bazel` file defines filegroups that map GNU tool names to their LLVM equivalents:
+   ```python
+   filegroup(
+       name = "gcc",
+       srcs = [":clang"],
+       visibility = ["//visibility:public"],
+   )
+   # ... other aliases ...
+   ```
+
+This dual approach ensures compatibility at both the filesystem level (for direct tool usage) and the Bazel level (for build system integration). While either approach alone might be sufficient, using both provides maximum compatibility and flexibility.
+
 ## Directory Structure
 
 ```
@@ -22,18 +86,13 @@ sysroot/
 
 ## BUILD File Targets
 
-The `BUILD.sysroot.bazel` file defines the following targets:
+The `BUILD.bazel` file defines the following targets:
 
 ```python
 filegroup(
-    name = "all",
-    srcs = [":sysroot"],
-)
-
-filegroup(
     name = "sysroot",
     srcs = glob(["bin/**"]),
-    allow_empty = True,
+    visibility = ["//visibility:public"],
 )
 
 # Individual tool targets
@@ -52,6 +111,12 @@ filegroup(
 filegroup(
     name = "llvm-ar",
     srcs = ["bin/llvm-ar"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "llvm-as",
+    srcs = ["bin/llvm-as"],
     visibility = ["//visibility:public"],
 )
 
@@ -90,44 +155,90 @@ filegroup(
     srcs = ["bin/llvm-dwp"],
     visibility = ["//visibility:public"],
 )
+
+# Tool aliases
+filegroup(
+    name = "gcc",
+    srcs = [":clang"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "cpp",
+    srcs = [":clang-cpp"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "ar",
+    srcs = [":llvm-ar"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "ld",
+    srcs = [":lld"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "nm",
+    srcs = [":llvm-nm"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "objcopy",
+    srcs = [":llvm-objcopy"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "objdump",
+    srcs = [":llvm-objdump"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "strip",
+    srcs = [":llvm-strip"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "dwp",
+    srcs = [":llvm-dwp"],
+    visibility = ["//visibility:public"],
+)
 ```
-
-## Included Tools
-
-This sysroot includes AMD64-specific versions of:
-
-- LLVM core tools:
-  - llvm-ar
-  - llvm-nm
-  - llvm-objcopy
-  - llvm-objdump
-  - llvm-readelf
-  - llvm-strip
-  - llvm-dwp
-- Clang compiler tools:
-  - clang
-  - clang++
-  - clang-cpp
-  - clang-format
-  - clang-tidy
-  - clangd
-- LLVM linker tools:
-  - lld
-  - ld.lld
 
 ## Usage in Bazel
 
-This sysroot is typically used as part of the LLVM toolchain configuration in your `MODULE.bazel`:
+This sysroot is used as part of the LLVM toolchain configuration in your `MODULE.bazel`:
 
 ```python
-llvm_toolchain(
+llvm.toolchain(
     name = "llvm_amd64",
     llvm_version = "20.1.2",
-    build_file = "//:llvm.BUILD",
-    sysroot = {
-        "include_prefix": "@bazel_sysroot_library//sysroot",
-        "lib_prefix": "@bazel_sysroot_lib_amd64//sysroot",
+    stdlib = {
+        "linux-x86_64": "stdc++",
     },
+)
+
+llvm.sysroot(
+    name = "llvm_amd64",
+    targets = ["linux-x86_64"],
+    # Main sysroot containing the LLVM tools
+    label = "@bazel_sysroot_llvm_amd64//:sysroot",
+    # Additional sysroots for headers and libraries
+    include_prefix = "@bazel_sysroot_library//:include",
+    lib_prefix = "@bazel_sysroot_lib_amd64//:lib",
+    # System libraries from both common and architecture-specific sysroots
+    system_libs = [
+        "@bazel_sysroot_library//:system_deps",
+        "@bazel_sysroot_library//:system_deps_static",
+        "@bazel_sysroot_lib_amd64//:system_libs",
+    ],
 )
 ```
 
@@ -136,43 +247,22 @@ llvm_toolchain(
 To build this sysroot:
 
 ```bash
-nix-build default.nix
+nix build
 ```
 
 The resulting sysroot will be available in the `result/sysroot` directory.
 
-## Structure
+## Notes
 
-The sysroot follows a specific structure to ensure compatibility with Bazel's LLVM toolchain. For details, see [SYSROOT_STRUCTURE.md](SYSROOT_STRUCTURE.md).
-
-## Building
-
-To build the sysroot:
-
-```bash
-nix build
-```
-
-## Usage
-
-The sysroot can be used in Bazel projects by adding it as a dependency in your `MODULE.bazel` file:
-
-```python
-http_archive(
-    name = "bazel_sysroot_tarball_amd64",
-    urls = ["https://github.com/yourusername/bazel_sysroot_llvm_amd64/archive/refs/heads/main.tar.gz"],
-    strip_prefix = "bazel_sysroot_llvm_amd64-main",
-)
-```
-
-Excluding llvm-exegesis as it's a large benchmarking tool (75MB) not needed for compilation
-See https://llvm.org/docs/CommandGuide/llvm-exegesis.html for details
-
-clang is symlinked into cc
-
-## GNU tool symlinks
-
-Bazel and some build systems expect standard GNU tool names (e.g., `ld`, `objcopy`, `strip`), but this sysroot only provides LLVM equivalents (e.g., `ld.lld`, `llvm-objcopy`, `llvm-strip`). We create symlinks from the GNU tool names to the LLVM equivalents to ensure compatibility with Bazel's toolchain expectations.
+- All binaries are placed in the `bin/` directory
+- The sysroot is designed to work in conjunction with:
+  - `bazel_sysroot_library` for common headers and system libraries
+  - `bazel_sysroot_lib_amd64` for AMD64-specific shared libraries
+- The BUILD file provides granular access to individual tools through filegroups
+- Each tool is exposed with public visibility for use in Bazel builds
+- GNU tool symlinks are created to ensure compatibility with Bazel's expectations
+- Excluding llvm-exegesis as it's a large benchmarking tool (75MB) not needed for compilation
+  See https://llvm.org/docs/CommandGuide/llvm-exegesis.html for details
 
 ## Available Make Targets
 
@@ -185,23 +275,3 @@ Bazel and some build systems expect standard GNU tool names (e.g., `ld`, `objcop
 - `make push` - Push changes to GitHub with dated commit
 - `make update-all` - Update flake, build, copy, and push
 - `make clean` - Clean up build artifacts
-
-## Repository Structure
-
-```
-.
-├── default.nix      # Nix package definition
-├── flake.nix        # Nix flake configuration
-├── Makefile         # Build and maintenance targets
-├── sysroot/         # Sysroot files (generated)
-│   ├── include/     # Header files
-│   ├── lib/         # Library files
-│   └── bin/         # Binary files (LLVM tools and coreutils)
-└── .gitignore      # Git ignore rules
-```
-
-## Dependencies
-
-- Nix package manager
-- rsync (for copying files)
-- git (for version control)
