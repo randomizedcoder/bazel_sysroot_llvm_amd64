@@ -36,6 +36,12 @@ filegroup(
 )
 
 filegroup(
+    name = "clang-cpp",
+    srcs = ["bin/clang-cpp"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
     name = "lld",
     srcs = glob(["bin/lld*", "bin/ld.lld"], allow_empty = True),
     visibility = ["//visibility:public"],
