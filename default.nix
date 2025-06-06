@@ -150,9 +150,10 @@ let
       ln -sf llvm-c++filt c++filt
       ln -sf llvm-cov gcov
 
-      # Copy Bazel configuration files
-      cp ${./bazel/BUILD.bazel} $out/sysroot/BUILD.bazel
-      cp ${./bazel/cc_toolchain_config.bzl} $out/sysroot/cc_toolchain_config.bzl
+    # Not embedding the bazel config in the sysroot.  This means the sysroot only has binaries, headers, and libraries.
+    #   # Copy Bazel configuration files
+    #   cp ${./bazel/BUILD.bazel} $out/sysroot/BUILD.bazel
+    #   cp ${./bazel/cc_toolchain_config.bzl} $out/sysroot/cc_toolchain_config.bzl
     '';
 
     meta = with pkgs.lib; {
