@@ -9,7 +9,9 @@ package(default_visibility = ["//visibility:public"])
 # Main sysroot filegroup
 filegroup(
     name = "sysroot",
-    srcs = glob(["bin/**"], allow_empty = True) + glob(["include/**"], allow_empty = True) + glob(["lib/**"], allow_empty = True),
+    srcs = glob(["bin/**"], allow_empty = True) +
+           glob(["include/**"], allow_empty = True) +
+           glob(["lib/**"], allow_empty = True),
     visibility = ["//visibility:public"],
 )
 
