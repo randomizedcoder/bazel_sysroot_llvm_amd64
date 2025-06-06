@@ -192,7 +192,10 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# C++ toolchain configuration
+# Create the C++ toolchain configuration
+load(":cc_toolchain_config.bzl", "create_cc_toolchain_config")
+create_cc_toolchain_config("llvm_amd64")
+
 cc_toolchain(
     name = "cc-toolchain-llvm_amd64",
     all_files = ":sysroot",
