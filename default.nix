@@ -150,8 +150,8 @@ let
       ln -sf llvm-c++filt c++filt
       ln -sf llvm-cov gcov
 
-    # Copy Bazel configuration file
-    cp ${./bazel/BUILD.bazel} $out/sysroot/BUILD.bazel
+    # # Copy Bazel configuration file
+    # cp ${./bazel/BUILD.bazel} $out/sysroot/BUILD.bazel
     # cp ${./bazel/cc_toolchain_config.bzl} $out/sysroot/cc_toolchain_config.bzl
     '';
 
